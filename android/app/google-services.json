@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "531356029348",
+    "firebase_url": "https://fixonway-1cc4c-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "fixonway-1cc4c",
+    "storage_bucket": "fixonway-1cc4c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:531356029348:android:0eb709a878e85ffd57b131",
+        "android_client_info": {
+          "package_name": "com.example.fixonway"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "531356029348-e118kdlhtlhofpe4s6ea1et81kf4rmra.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyApS1k5X0Ld6Rg6ygdIy1m10h9v5ePCzNc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "531356029348-e118kdlhtlhofpe4s6ea1et81kf4rmra.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

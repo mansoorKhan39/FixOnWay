@@ -1,0 +1,138 @@
+rules_version = '2';
+
+// FixOnWay Firestore rules (Stage 8, per-collection).
+// Publish with:  firebase deploy --only firestore:rules
+// or paste into Firebase console > Firestore Database > Rules > Publish.
+//
+// Run "Create demo data in Firebase" in the app ONCE before publishing:
+// the admin account is not allowed to be created from inside the app.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function myProfile() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isAdmin() {
+      return signedIn() && myProfile().role == 'admin';
+    }
+
+    function isMechanic() {
+      return signedIn() && myProfile().role == 'mechanic';
+    }
+
+    // Profiles. Reading is open because the app has to look up an account
+    // by phone or e-mail before the person has logged in.
+    match /users/{uid} {
+      allow read: if true;
+      allow create: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.role in ['customer', 'mechanic'];
+      allow update: if isAdmin()
+        || (signedIn()
+          && request.auth.uid == uid
+          && request.resource.data.role == resource.data.role
+          && request.resource.data.status == resource.data.status
+          && request.resource.data.get('verificationStatus', null)
+             == resource.data.get('verificationStatus', null));
+      allow delete: if false;
+    }
+
+    // Service requests: readable by logged-in users (mechanics need to see
+    // nearby jobs). Only the owner customer creates; the owner, a mechanic
+    // or an admin changes. Never deleted.
+    match /requests/{id} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && (request.resource.data.customerId == request.auth.uid || isAdmin());
+      allow update: if signedIn()
+        && (resource.data.customerId == request.auth.uid
+            || isMechanic() || isAdmin());
+      allow delete: if false;
+    }
+
+    match /estimates/{id} {
+      allow read: if signedIn();
+      allow create: if isMechanic() || isAdmin();
+      allow update: if signedIn();
+      allow delete: if false;
+    }
+
+    // Mechanic profiles. Created by the mechanic (or admin on approval).
+    // Updates are open to logged-in users because a customer's review
+    // updates the mechanic's rating.
+    match /mechanics/{uid} {
+      allow read: if signedIn();
+      allow create: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow update: if signedIn();
+      allow delete: if false;
+    }
+
+    match /notifications/{id} {
+      allow read: if signedIn()
+        && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if signedIn();
+      allow update: if signedIn() && resource.data.userId == request.auth.uid;
+      allow delete: if false;
+    }
+
+    // Saved vehicles: private to the owner (admin can read).
+    match /vehicles/{id} {
+      allow read: if signedIn()
+        && (resource.data.ownerId == request.auth.uid || isAdmin());
+      allow create: if signedIn()
+        && (request.resource.data.ownerId == request.auth.uid || isAdmin());
+      allow update, delete: if signedIn()
+        && (resource.data.ownerId == request.auth.uid || isAdmin());
+    }
+
+    match /messages/{id} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && (request.resource.data.senderId == request.auth.uid || isAdmin());
+      allow update, delete: if false;
+    }
+
+    match /reviews/{id} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && (request.resource.data.customerId == request.auth.uid || isAdmin());
+      allow update, delete: if false;
+    }
+
+    match /complaints/{id} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && (request.resource.data.customerId == request.auth.uid || isAdmin());
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
+
+    // Mechanic verification forms: the applicant and admins only.
+    match /applications/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow create, update: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    // Admin activity log: admins only, never edited.
+    match /auditLogs/{id} {
+      allow read, create: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    // Mechanic GPS position for a job.
+    match /liveLocations/{id} {
+      allow read, write: if signedIn();
+    }
+
+    // Anything else is closed.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
