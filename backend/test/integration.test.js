@@ -130,6 +130,25 @@ test('API with a real database', { skip: !uri && 'set MONGODB_TEST_URI to run' }
     assert.ok((await call('GET', '/api/audit?limit=5', undefined, sara.token)).json.length >= 1);
   });
 
+  await t.test('file upload: photo is public, document is private', async () => {
+    const png = Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex');
+    const send = (kind, token, bytes = png, type = 'image/png') =>
+      fetch(`${base}/api/files?kind=${kind}`, {
+        method: 'POST',
+        headers: { 'Content-Type': type, 'X-File-Name': encodeURIComponent('cnic front.png'), Authorization: `Bearer ${token}` },
+        body: bytes,
+      });
+    const doc = await (await send('document', usman.token)).json();
+    assert.ok(doc.id);
+    const photo = await (await send('photo', ali.token)).json();
+    assert.equal((await fetch(`${base}/api/files/${photo.id}`)).status, 200);
+    assert.equal((await fetch(`${base}/api/files/${doc.id}`)).status, 401);
+    assert.equal((await fetch(`${base}/api/files/${doc.id}?token=${usman.token}`)).status, 200);
+    assert.equal((await fetch(`${base}/api/files/${doc.id}?token=${sara.token}`)).status, 200);
+    assert.equal((await fetch(`${base}/api/files/${doc.id}?token=${ali.token}`)).status, 403);
+    assert.equal((await send('document', usman.token, Buffer.from('MZ-not-an-image-at-all'))).status, 400);
+  });
+
   await t.test('mongo operators in a query are refused', async () => {
     const r = await call('GET', '/api/requests?customerId[$ne]=x', undefined, sara.token);
     assert.equal(r.status, 400);

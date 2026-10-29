@@ -74,6 +74,41 @@ class ApiClient {
 
   Future<dynamic> delete(String path) => _send('DELETE', path);
 
+  /// Uploads a picture (the backend keeps it in MongoDB). [kind] is `photo`
+  /// (anyone with the link can see it) or `document` (owner and admin only).
+  /// Returns the id of the stored file.
+  Future<String> uploadFile(
+    List<int> bytes,
+    String name, {
+    required String kind,
+  }) async {
+    final Object? json = await _send(
+      'POST',
+      '/api/files',
+      query: <String, String>{'kind': kind},
+      bytes: bytes,
+      contentType: contentTypeOf(name),
+      headers: <String, String>{'X-File-Name': Uri.encodeComponent(name)},
+    );
+    return ApiClient.map(json)['id'] as String;
+  }
+
+  /// Address of a stored file. A `document` needs the login token in the
+  /// address so an image widget can show it.
+  String fileUrl(String fileId, {bool withToken = false}) {
+    final String url = '$baseUrl/api/files/$fileId';
+    final String? token = _token;
+    return withToken && token != null ? '$url?token=$token' : url;
+  }
+
+  static String contentTypeOf(String name) {
+    final String lower = name.toLowerCase();
+    if (lower.endsWith('.png')) return 'image/png';
+    if (lower.endsWith('.webp')) return 'image/webp';
+    if (lower.endsWith('.gif')) return 'image/gif';
+    return 'image/jpeg';
+  }
+
   /// Like [get], but a "not found" answer gives null.
   Future<dynamic> getOrNull(String path, {Map<String, String>? query}) async {
     try {
@@ -89,6 +124,9 @@ class ApiClient {
     String path, {
     Map<String, String>? query,
     Object? body,
+    List<int>? bytes,
+    String? contentType,
+    Map<String, String>? headers,
   }) async {
     Uri uri = Uri.parse('$baseUrl$path');
     if (query != null && query.isNotEmpty) {
@@ -96,10 +134,14 @@ class ApiClient {
     }
     final http.Request request = http.Request(method, uri)
       ..headers['Accept'] = 'application/json';
-    if (body != null) {
+    if (bytes != null) {
+      request.headers['Content-Type'] = contentType ?? 'application/octet-stream';
+      request.bodyBytes = bytes;
+    } else if (body != null) {
       request.headers['Content-Type'] = 'application/json';
       request.body = jsonEncode(body);
     }
+    if (headers != null) request.headers.addAll(headers);
     final String? token = _token;
     if (token != null) request.headers['Authorization'] = 'Bearer $token';
 

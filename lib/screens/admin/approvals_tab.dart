@@ -7,9 +7,11 @@ import '../../core/utils/ui_helpers.dart';
 import '../../core/widgets/empty_state.dart';
 import '../../core/widgets/error_banner.dart';
 import '../../core/widgets/section_card.dart';
+import '../../models/document_ref.dart';
 import '../../models/enums/problem_type.dart';
 import '../../models/enums/vehicle_type.dart';
 import '../../models/mechanic_application.dart';
+import '../../services/photo_service.dart';
 
 /// UC-34: verify or reject mechanics.
 class ApprovalsTab extends StatelessWidget {
@@ -104,9 +106,18 @@ class ApprovalsTab extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  'Documents: ${a.documents.join(', ')}',
-                  style: const TextStyle(color: AppColors.textMuted),
+                const Text(
+                  'Documents',
+                  style: TextStyle(color: AppColors.textMuted),
+                ),
+                const SizedBox(height: 4),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: <Widget>[
+                    for (final String d in a.documents)
+                      _DocumentChip(reference: DocumentRef.parse(d)),
+                  ],
                 ),
                 const SizedBox(height: 12),
                 Row(
@@ -133,6 +144,64 @@ class ApprovalsTab extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+/// One verification document. A tap opens the uploaded picture.
+class _DocumentChip extends StatelessWidget {
+  const _DocumentChip({required this.reference});
+
+  final DocumentRef reference;
+
+  void _open(BuildContext context) {
+    final String? url = context.read<PhotoService>().documentUrl(reference.fileId!);
+    if (url == null) return;
+    showDialog<void>(
+      context: context,
+      builder: (BuildContext context) => Dialog(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Text(
+                reference.label,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+            Flexible(
+              child: InteractiveViewer(
+                child: Image.network(
+                  url,
+                  fit: BoxFit.contain,
+                  errorBuilder: (BuildContext c, Object e, StackTrace? s) =>
+                      const Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Text('This document cannot be shown.'),
+                  ),
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ActionChip(
+      avatar: Icon(
+        reference.hasFile ? Icons.image_outlined : Icons.description_outlined,
+        size: 18,
+      ),
+      label: Text(reference.label),
+      onPressed: reference.hasFile ? () => _open(context) : null,
     );
   }
 }

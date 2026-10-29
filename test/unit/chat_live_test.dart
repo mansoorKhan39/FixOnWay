@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fixonway/models/chat_message.dart';
+import 'package:fixonway/models/document_ref.dart';
 import 'package:fixonway/models/photo_attachment.dart';
 import 'package:fixonway/repositories/mock_chat_repository.dart';
 import 'package:fixonway/repositories/mock_data_store.dart';
@@ -48,9 +49,9 @@ void main() {
     });
   });
 
-  group('PhotoService', () {
-    test('without Cloudinary settings it returns a demo photo', () async {
-      const PhotoService service = PhotoService(cloud: '', preset: '');
+  group('PhotoService (no backend)', () {
+    test('without a backend it returns a demo photo', () async {
+      const PhotoService service = PhotoService();
       expect(service.enabled, isFalse);
       final PhotoAttachment? photo = await service.pick(2);
       expect(photo, isNotNull);
@@ -58,10 +59,28 @@ void main() {
       expect(photo.url, isNull);
     });
 
-    test('with both settings it is enabled', () {
-      const PhotoService service =
-          PhotoService(cloud: 'demo', preset: 'fixonway');
-      expect(service.enabled, isTrue);
+    test('without a backend a document is just its name', () async {
+      const PhotoService service = PhotoService();
+      expect(await service.pickDocument('CNIC front'), 'CNIC front');
+      expect(service.documentUrl('abc'), isNull);
+    });
+  });
+
+  group('DocumentRef', () {
+    test('encodes and parses an uploaded document', () {
+      const DocumentRef ref = DocumentRef('CNIC front', 'abc123');
+      expect(ref.encode(), 'CNIC front::abc123');
+      final DocumentRef back = DocumentRef.parse('CNIC front::abc123');
+      expect(back.label, 'CNIC front');
+      expect(back.fileId, 'abc123');
+      expect(back.hasFile, isTrue);
+    });
+
+    test('a plain name has no file', () {
+      final DocumentRef ref = DocumentRef.parse('Workshop photo');
+      expect(ref.label, 'Workshop photo');
+      expect(ref.hasFile, isFalse);
+      expect(ref.encode(), 'Workshop photo');
     });
   });
 }

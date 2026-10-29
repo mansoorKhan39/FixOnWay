@@ -41,8 +41,9 @@ const Complaint = docModel('Complaint', 'complaints', [{ requestId: 1 }]);
 const Application = docModel('Application', 'applications');
 const AuditLog = docModel('AuditLog', 'auditLogs', [{ createdAt: -1 }]);
 const LiveLocation = docModel('LiveLocation', 'liveLocations');
+const StoredFile = docModel('StoredFile', 'files', [{ ownerId: 1 }]);
 
 module.exports = {
   User, Request, Estimate, Mechanic, Notification, Vehicle, Message,
-  Review, Complaint, Application, AuditLog, LiveLocation,
+  Review, Complaint, Application, AuditLog, LiveLocation, StoredFile,
 };

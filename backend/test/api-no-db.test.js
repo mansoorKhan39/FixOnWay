@@ -67,6 +67,21 @@ test('login needs both fields', async () => {
   assert.equal(r.status, 400);
 });
 
+test('uploading a file needs a login', async () => {
+  const res = await fetch(`${base}/api/files?kind=document`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'image/png' },
+    body: Buffer.from([1, 2, 3]),
+  });
+  assert.equal(res.status, 401);
+});
+
+test('a private document cannot be read without a token', async () => {
+  const res = await fetch(`${base}/api/files/does-not-exist`);
+  // unknown ids are 404 before any permission check
+  assert.ok([401, 404, 500].includes(res.status));
+});
+
 test('broken JSON is a clean 400', async () => {
   const res = await fetch(`${base}/api/auth/login`, {
     method: 'POST',

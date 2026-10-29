@@ -36,6 +36,7 @@ import 'services/chat_service.dart';
 import 'services/job_service.dart';
 import 'services/mechanic_service.dart';
 import 'services/payment_service.dart';
+import 'services/photo_service.dart';
 import 'services/request_service.dart';
 import 'services/review_service.dart';
 import 'services/vehicle_service.dart';
@@ -50,6 +51,7 @@ Future<void> main() async {
   final ReviewRepository reviewRepository;
   final ApplicationRepository applicationRepository;
   final AuditRepository auditRepository;
+  PhotoService photoService = const PhotoService();
 
   if (AppConfig.useMock) {
     // Run with: flutter run -d chrome --dart-define=USE_MOCK=true
@@ -72,6 +74,7 @@ Future<void> main() async {
     reviewRepository = ApiReviewRepository(api);
     applicationRepository = ApiApplicationRepository(api);
     auditRepository = ApiAuditRepository(api);
+    photoService = PhotoService(api: api);
   }
 
   final RequestService requestService = RequestService(requestRepository);
@@ -121,6 +124,7 @@ Future<void> main() async {
       mechanicController: mechanicController,
       chatController: chatController,
       adminController: adminController,
+      photoService: photoService,
     ),
   );
 }

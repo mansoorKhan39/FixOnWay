@@ -66,10 +66,13 @@ The app calls `http://localhost:5000` by default. Another address:
 
 `npm run seed` empties the database first; `npm run seed -- --keep` keeps what is there.
 
-## Photos (optional, free)
-Cloudinary free account > Settings > Upload > Add upload preset > Signing mode: Unsigned. Then
-`flutter run -d chrome --dart-define=CLOUDINARY_CLOUD=<cloud name> --dart-define=CLOUDINARY_PRESET=<preset>`.
-Without them photos stay in demo mode (name only).
+## Photos and documents
+Problem photos (customer) and verification documents (mechanic: CNIC front/back, licence, workshop photo, certificate)
+are picked in the app and uploaded to the backend, which keeps them in MongoDB (collection `files`, free, no other service).
+- Pictures only (JPG, PNG, WEBP, GIF), up to 5 MB. The backend checks the file really is a picture.
+- Documents are private: only the mechanic who uploaded them and the admin can open them (admin: Approvals tab, tap a document).
+- Photos can be opened by anyone who has the link (the id is random).
+In mock mode (`USE_MOCK=true`) uploads are only simulated.
 
 ## Tests
 - Flutter: `flutter test` (validators, state machine, services, codecs, API client with a fake server, widgets).
@@ -78,7 +81,6 @@ Without them photos stay in demo mode (name only).
   `set MONGODB_TEST_URI=mongodb://127.0.0.1:27017/fixonway_test` then `npm test`.
 
 ## Still demo on purpose
-Phone verification code (removed), JazzCash/EasyPaisa (payment is recorded only), mechanic document upload (names only),
-push notifications.
+Phone verification code (removed), JazzCash/EasyPaisa (payment is recorded only), push notifications when the app is closed.
 "Forgot password" accepts the phone number alone. That is fine for the lab but must get a real e-mail or SMS check before
 real use.

@@ -105,6 +105,32 @@ void main() {
       );
     });
 
+    test('uploadFile sends the bytes, the name and the kind', () async {
+      final List<http.Request> log = <http.Request>[];
+      final ApiClient api = fakeApi(
+        (http.Request r) => (201, <String, dynamic>{'id': 'f1', 'name': 'a.png', 'size': 3}),
+        log: log,
+      );
+      await api.setToken('tok');
+      final String id = await api.uploadFile(<int>[1, 2, 3], 'cnic front.PNG', kind: 'document');
+      expect(id, 'f1');
+      final http.Request sent = log.single;
+      expect(sent.method, 'POST');
+      expect(sent.url.path, '/api/files');
+      expect(sent.url.queryParameters['kind'], 'document');
+      expect(sent.bodyBytes, <int>[1, 2, 3]);
+      expect(sent.headers['Content-Type'], 'image/png');
+      expect(Uri.decodeComponent(sent.headers['X-File-Name']!), 'cnic front.PNG');
+      expect(sent.headers['Authorization'], 'Bearer tok');
+    });
+
+    test('fileUrl adds the token only when asked', () async {
+      final ApiClient api = fakeApi((http.Request r) => (200, null));
+      await api.setToken('tok');
+      expect(api.fileUrl('f1'), 'http://test/api/files/f1');
+      expect(api.fileUrl('f1', withToken: true), 'http://test/api/files/f1?token=tok');
+    });
+
     test('the token is saved and loaded again', () async {
       final ApiClient first = fakeApi((http.Request r) => (200, null));
       await first.setToken('keep-me');

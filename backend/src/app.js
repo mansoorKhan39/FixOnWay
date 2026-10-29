@@ -14,6 +14,7 @@ function createApp() {
   app.get('/api/health', (_req, res) => res.json({ ok: true, name: 'FixOnWay API' }));
   app.use('/api/auth', require('./routes/auth'));
   app.use('/api/users', require('./routes/users'));
+  app.use('/api/files', require('./routes/files'));
   app.use('/api', require('./routes/data'));
 
   app.use(notFound);

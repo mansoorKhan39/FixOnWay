@@ -7,13 +7,8 @@ const asyncHandler = require('../utils/asyncHandler');
 const signToken = (user) =>
   jwt.sign({ uid: String(user._id) }, config.jwtSecret, { expiresIn: config.jwtExpiresIn });
 
-/**
- * Reads "Authorization: Bearer <token>", loads the user from the database
- * (so a blocked account is refused at once) and sets req.user.
- */
-const requireAuth = asyncHandler(async (req, _res, next) => {
-  const header = req.headers.authorization || '';
-  const token = header.startsWith('Bearer ') ? header.slice(7) : null;
+/** Token text -> user from the database (a blocked account is refused at once). */
+async function userFromToken(token) {
   if (!token) throw new HttpError(401, 'Please log in.');
   let payload;
   try {
@@ -24,7 +19,17 @@ const requireAuth = asyncHandler(async (req, _res, next) => {
   const user = await User.findById(payload.uid).lean();
   if (!user) throw new HttpError(401, 'Your session has expired. Please log in again.');
   if (user.status === 'blocked') throw new HttpError(403, 'Your account is suspended.');
-  req.user = user;
+  return user;
+}
+
+const bearer = (req) => {
+  const header = req.headers.authorization || '';
+  return header.startsWith('Bearer ') ? header.slice(7) : null;
+};
+
+/** Reads "Authorization: Bearer <token>" and sets req.user. */
+const requireAuth = asyncHandler(async (req, _res, next) => {
+  req.user = await userFromToken(bearer(req));
   next();
 });
 
@@ -35,4 +40,4 @@ const requireRole = (...roles) => (req, _res, next) => {
   return next();
 };
 
-module.exports = { signToken, requireAuth, requireRole };
+module.exports = { signToken, requireAuth, requireRole, userFromToken, bearer };

@@ -3,13 +3,16 @@ import 'package:provider/provider.dart';
 
 import '../../controllers/auth_controller.dart';
 import '../../controllers/mechanic_controller.dart';
+import '../../core/errors/app_exception.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/validators.dart';
 import '../../core/widgets/app_text_field.dart';
 import '../../core/widgets/error_banner.dart';
 import '../../core/widgets/primary_button.dart';
+import '../../models/document_ref.dart';
 import '../../models/enums/problem_type.dart';
 import '../../models/enums/vehicle_type.dart';
+import '../../services/photo_service.dart';
 
 /// UC-23: details and documents for verification.
 class VerificationFormScreen extends StatefulWidget {
@@ -36,6 +39,8 @@ class _VerificationFormScreenState extends State<VerificationFormScreen> {
   final Set<VehicleType> _vehicles = <VehicleType>{};
   final List<String> _documents = <String>[];
   String? _choiceError;
+  String? _documentError;
+  bool _uploading = false;
 
   @override
   void initState() {
@@ -51,13 +56,45 @@ class _VerificationFormScreenState extends State<VerificationFormScreen> {
     super.dispose();
   }
 
-  void _addDocument() {
-    // Demo: a real file picker is added with the backend stage.
-    for (final String name in _documentNames) {
-      if (!_documents.contains(name)) {
-        setState(() => _documents.add(name));
-        return;
+  /// Asks which document it is, then picks the picture and uploads it.
+  Future<void> _addDocument() async {
+    final Set<String> used = <String>{
+      for (final String d in _documents) DocumentRef.parse(d).label,
+    };
+    final List<String> choices =
+        _documentNames.where((String n) => !used.contains(n)).toList();
+    if (choices.isEmpty) return;
+    final PhotoService service = context.read<PhotoService>();
+    final String? label = await showDialog<String>(
+      context: context,
+      builder: (BuildContext context) => SimpleDialog(
+        title: const Text('Which document?'),
+        children: <Widget>[
+          for (final String name in choices)
+            SimpleDialogOption(
+              onPressed: () => Navigator.of(context).pop(name),
+              child: Text(name),
+            ),
+        ],
+      ),
+    );
+    if (label == null || !mounted) return;
+    setState(() {
+      _documentError = null;
+      _uploading = true;
+    });
+    try {
+      final String? saved = await service.pickDocument(label);
+      if (!mounted) return;
+      if (saved != null) setState(() => _documents.add(saved));
+    } on AppException catch (e) {
+      if (mounted) setState(() => _documentError = e.message);
+    } catch (_) {
+      if (mounted) {
+        setState(() => _documentError = 'Could not upload the picture. Try again.');
       }
+    } finally {
+      if (mounted) setState(() => _uploading = false);
     }
   }
 
@@ -195,18 +232,42 @@ class _VerificationFormScreenState extends State<VerificationFormScreen> {
                     children: <Widget>[
                       for (final String d in _documents)
                         InputChip(
-                          avatar: const Icon(Icons.description, size: 18),
-                          label: Text(d),
+                          avatar: Icon(
+                            DocumentRef.parse(d).hasFile
+                                ? Icons.check_circle
+                                : Icons.description,
+                            size: 18,
+                          ),
+                          label: Text(DocumentRef.parse(d).label),
                           onDeleted: () =>
                               setState(() => _documents.remove(d)),
                         ),
                       if (_documents.length < _documentNames.length)
                         OutlinedButton.icon(
-                          onPressed: _addDocument,
-                          icon: const Icon(Icons.upload_file),
-                          label: const Text('Add document'),
+                          onPressed: _uploading ? null : _addDocument,
+                          icon: _uploading
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Icon(Icons.upload_file),
+                          label: Text(_uploading ? 'Uploading...' : 'Add document'),
                         ),
                     ],
+                  ),
+                  if (_documentError != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Text(
+                        _documentError!,
+                        style: const TextStyle(color: AppColors.error, fontSize: 12),
+                      ),
+                    ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Pictures only (JPG, PNG), up to 5 MB each. Only you and the admin can open them.',
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 12),
                   ),
                   const SizedBox(height: 24),
                   PrimaryButton(
